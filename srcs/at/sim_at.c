@@ -7,7 +7,7 @@
  * modules (SIM, MQTT, HTTP) are separate files (planned later).
  */
 
-#include "sim_at.h"
+#include "at/sim_at.h"
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
