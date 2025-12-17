@@ -1,6 +1,7 @@
 set(srcs
 	srcs/at/sim_at.c
     srcs/module/simcom_uart.c
+    srcs/services/sim_basic_at.c
     srcs/services/sim_status_control_at.c
     srcs/services/sim_network_at.c
     srcs/services/sim_simcard_at.c
