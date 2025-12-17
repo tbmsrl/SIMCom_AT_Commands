@@ -82,6 +82,7 @@ simcom_err_t simcom_init(const simcom_config_t *cfg)
     simcom_ignore_resp();
 
     ESP_LOGI(TAG, "sim_at initialized");
+    simcom_set_init_flag(true);
     return SIM_AT_OK;
 }
 
@@ -99,6 +100,7 @@ simcom_err_t simcom_deinit(void)
     
     g_inited = false;
     ESP_LOGI(TAG, "sim_at deinitialized");
+    simcom_set_init_flag(false);
     return SIM_AT_OK;
 }
 
