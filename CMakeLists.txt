@@ -11,5 +11,5 @@ set(srcs
 idf_component_register(
     SRCS ${srcs} 
     INCLUDE_DIRS "include"
-    PRIV_INCLUDE_DRS "srcs"
+    PRIV_INCLUDE_DIRS "srcs"
 )
