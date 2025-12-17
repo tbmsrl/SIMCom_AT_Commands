@@ -47,6 +47,17 @@ simcom_err_t simcom_init(const simcom_config_t *cfg);
  */
 simcom_err_t simcom_deinit(void);
 
+
+
+/* ================================================== */
+/* =============== [ Basic Commands ] =============== */
+/* ================================================== */
+
+simcom_err_t simcom_comm_test(void);
+simcom_err_t simcom_enable_echo(bool enable)
+
+
+
 /* ================================================== */
 /* =============== [ Status Control ] =============== */
 /* ================================================== */
@@ -69,8 +80,6 @@ simcom_err_t simcom_deinit(void);
  * [ ] AT+SIMEI     = Set IMEI for the module
  * 
  */
-
-simcom_err_t simcom_comm_test(void);
 
 /**
  * @brief Returns the current phone functionality
