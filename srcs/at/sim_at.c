@@ -79,7 +79,7 @@ const char *simcom_err_to_str(simcom_err_t err)
     case SIM_AT_OK:                 return "SIM_AT_OK";
     case SIM_AT_ERR_INVALID_ARG:    return "SIM_AT_ERR_INVALID_ARG";
     case SIM_AT_ERR_NO_MEM:         return "SIM_AT_ERR_NO_MEM";
-    case simcom_err_tIMEOUT:        return "simcom_err_tIMEOUT";
+    case SIMCOM_ERR_TIMEOUT:        return "SIMCOM_ERR_TIMEOUT";
     case SIM_AT_ERR_UART:           return "SIM_AT_ERR_UART";
     case SIM_AT_ERR_BUSY:           return "SIM_AT_ERR_BUSY";
     case SIM_AT_ERR_INTERNAL:       return "SIM_AT_ERR_INTERNAL";
@@ -324,7 +324,7 @@ simcom_err_t simcom_cmd_sync(const char *cmd, uint32_t timeout_ms)
     TickType_t wait_ticks = pdMS_TO_TICKS((timeout_ms == 0) ? g_cfg->default_cmd_timeout_ms : timeout_ms);
     if (xSemaphoreTake(s_sync_sem, wait_ticks) == pdFALSE)
     {
-        return simcom_err_tIMEOUT;
+        return SIMCOM_ERR_TIMEOUT;
     }
 
     return SIM_AT_OK;
@@ -339,7 +339,7 @@ simcom_err_t simcom_wait_resp(uint32_t timeout_ms)
     TickType_t wait_ticks = pdMS_TO_TICKS((timeout_ms == 0) ? g_cfg->default_cmd_timeout_ms : timeout_ms);
     if (xSemaphoreTake(s_sync_sem, wait_ticks) == pdFALSE)
     {
-        return simcom_err_tIMEOUT;
+        return SIMCOM_ERR_TIMEOUT;
     }
 
     return SIM_AT_OK;   
@@ -364,7 +364,7 @@ simcom_err_t simcom_cmd_sync_ignore_resp(const char *cmd, uint32_t timeout_ms, u
     TickType_t wait_ticks = pdMS_TO_TICKS((timeout_ms == 0) ? g_cfg->default_cmd_timeout_ms : timeout_ms);
     if (xSemaphoreTake(s_sync_sem, wait_ticks) == pdFALSE)
     {
-        return simcom_err_tIMEOUT;
+        return SIMCOM_ERR_TIMEOUT;
     }
 
     for (int i=0; i<num_responses; i++)

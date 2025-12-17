@@ -15,7 +15,7 @@ extern "C" {
     SIM_AT_OK = 0,
     SIM_AT_ERR_INVALID_ARG = -1,
     SIM_AT_ERR_NO_MEM = -2,    /* reserved—shouldn't be returned by API since no dynamic alloc */
-    simcom_err_tIMEOUT = -3,
+    SIMCOM_ERR_TIMEOUT = -3,
     SIM_AT_ERR_UART = -4,
     SIM_AT_ERR_BUSY = -5,
     SIM_AT_ERR_INTERNAL = -6,

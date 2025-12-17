@@ -3,7 +3,7 @@
 
 static const char *TAG = "mqtt_at";
 
-const char* sim_mqtt_err_to_string(sim_mqtt_err_codes_t err)
+const char* simcom_mqtt_err_to_str(sim_mqtt_err_codes_t err)
 {
     switch (err)
     {
@@ -47,7 +47,7 @@ const char* sim_mqtt_err_to_string(sim_mqtt_err_codes_t err)
     }
 }
 
-simcom_err_t sim_at_start_mqtt_service(void)
+simcom_err_t simcom_mqtt_service_start(void)
 {
     // Send command
     simcom_err_t err = simcom_cmd_sync("AT+CMQTTSTART\r\n", 12000);
@@ -84,14 +84,14 @@ simcom_err_t sim_at_start_mqtt_service(void)
 
     if (err_code != SIM_MQTT_OK)
     {
-        ESP_LOGE(TAG, "Error starting MQTT service: %s", sim_mqtt_err_to_string(err_code));
+        ESP_LOGE(TAG, "Error starting MQTT service: %s", simcom_mqtt_err_to_str(err_code));
         return SIM_AT_ERR_INTERNAL;
     }
 
     return SIM_AT_OK;
 }
 
-simcom_err_t sim_at_stop_mqtt_service(void)
+simcom_err_t simcom_mqtt_service_stop(void)
 {
     // Send command
     simcom_err_t err = simcom_cmd_sync("AT+CMQTTSTOP\r\n", 12000);
@@ -120,14 +120,14 @@ simcom_err_t sim_at_stop_mqtt_service(void)
         int err_code;
         if (sscanf(data, "%d", &err_code) != 1)
             return SIM_AT_ERR_RESPONSE;
-        ESP_LOGE(TAG, "Error with stopping MQTT service: %s", sim_mqtt_err_to_string(err_code));
+        ESP_LOGE(TAG, "Error with stopping MQTT service: %s", simcom_mqtt_err_to_str(err_code));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_ERR_RESPONSE;
 }
 
-simcom_err_t sim_at_acquire_mqtt_client(int client_index, const char* client_id)
+simcom_err_t simcom_mqtt_client_acquire(int client_index, const char* client_id)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -159,14 +159,14 @@ simcom_err_t sim_at_acquire_mqtt_client(int client_index, const char* client_id)
         int aux, err_code;
         if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
             return SIM_AT_ERR_RESPONSE;
-        ESP_LOGE(TAG, "Error with acquiring MQTT client: %s", sim_mqtt_err_to_string(err_code));
+        ESP_LOGE(TAG, "Error with acquiring MQTT client: %s", simcom_mqtt_err_to_str(err_code));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_ERR_RESPONSE;
 }
 
-simcom_err_t sim_at_release_mqtt_client(int client_index)
+simcom_err_t simcom_mqtt_client_release(int client_index)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;  
@@ -196,14 +196,14 @@ simcom_err_t sim_at_release_mqtt_client(int client_index)
         int aux, err_code;
         if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
             return SIM_AT_ERR_RESPONSE;
-        ESP_LOGE(TAG, "Error with acquiring MQTT client: %s", sim_mqtt_err_to_string(err_code));
+        ESP_LOGE(TAG, "Error with acquiring MQTT client: %s", simcom_mqtt_err_to_str(err_code));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK;
 }
 
-simcom_err_t sim_at_connect_mqtt_server(int client_index, const char* server_addr, int keepalive_time, int clean_session)
+simcom_err_t simcom_mqtt_server_connect(int client_index, const char* server_addr, int keepalive_time, int clean_session)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -243,7 +243,7 @@ simcom_err_t sim_at_connect_mqtt_server(int client_index, const char* server_add
             
             if (err_code != SIM_MQTT_OK)
             {
-                ESP_LOGE(TAG, "Error connecting to MQTT server: %s", sim_mqtt_err_to_string(err_code));
+                ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
                 return SIM_AT_ERR_RESPONSE;
             }
             return SIM_AT_OK;   
@@ -255,7 +255,7 @@ simcom_err_t sim_at_connect_mqtt_server(int client_index, const char* server_add
         int aux, err_code;
         if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
             return SIM_AT_ERR_RESPONSE;
-        ESP_LOGE(TAG, "Error connecting to MQTT server: %s", sim_mqtt_err_to_string(err_code));
+        ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
         return SIM_AT_ERR_RESPONSE;
     }
 
@@ -267,7 +267,7 @@ simcom_err_t sim_at_connect_mqtt_server(int client_index, const char* server_add
             int aux, err_code;
             if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
                 return SIM_AT_ERR_RESPONSE;
-            ESP_LOGE(TAG, "Error connecting to MQTT server: %s", sim_mqtt_err_to_string(err_code));
+            ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
             return SIM_AT_ERR_RESPONSE;
         }
     }
@@ -275,7 +275,7 @@ simcom_err_t sim_at_connect_mqtt_server(int client_index, const char* server_add
     return SIM_AT_ERR_RESPONSE;
 }
 
-simcom_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
+simcom_err_t simcom_mqtt_server_disconnect(int client_index, int timeout)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -310,7 +310,7 @@ simcom_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
             
             if (err_code != SIM_MQTT_OK)
             {
-                ESP_LOGE(TAG, "Error connecting to MQTT server: %s", sim_mqtt_err_to_string(err_code));
+                ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
                 return SIM_AT_ERR_RESPONSE;
             }
             return SIM_AT_OK;   
@@ -322,7 +322,7 @@ simcom_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
         int aux, err_code;
         if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
             return SIM_AT_ERR_RESPONSE;
-        ESP_LOGE(TAG, "Error connecting to MQTT server: %s", sim_mqtt_err_to_string(err_code));
+        ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
         return SIM_AT_ERR_RESPONSE;
     }
 
@@ -334,7 +334,7 @@ simcom_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
             int aux, err_code;
             if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
                 return SIM_AT_ERR_RESPONSE;
-            ESP_LOGE(TAG, "Error connecting to MQTT server: %s", sim_mqtt_err_to_string(err_code));
+            ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
             return SIM_AT_ERR_RESPONSE;
         }
     }
@@ -342,7 +342,7 @@ simcom_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
     return SIM_AT_ERR_RESPONSE;
 }
 
-simcom_err_t sim_at_mqtt_topic(int client_index, const char* topic)
+simcom_err_t simcom_mqtt_topic_set(int client_index, const char* topic)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -390,7 +390,7 @@ simcom_err_t sim_at_mqtt_topic(int client_index, const char* topic)
     return SIM_AT_OK;
 }
 
-simcom_err_t sim_at_mqtt_payload(int client_index, const char* payload)
+simcom_err_t simcom_mqtt_payload_set(int client_index, const char* payload)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -436,7 +436,7 @@ simcom_err_t sim_at_mqtt_payload(int client_index, const char* payload)
     return SIM_AT_OK;  
 }
 
-simcom_err_t sim_at_mqtt_publish(int client_index, int qos, int pub_timeout)
+simcom_err_t simcom_mqtt_publish(int client_index, int qos, int pub_timeout)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -473,7 +473,7 @@ simcom_err_t sim_at_mqtt_publish(int client_index, int qos, int pub_timeout)
             
             if (err_code != SIM_MQTT_OK)
             {
-                ESP_LOGE(TAG, "Error connecting to MQTT server: %s", sim_mqtt_err_to_string(err_code));
+                ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
                 return SIM_AT_ERR_RESPONSE;
             }
             return SIM_AT_OK;   
@@ -485,7 +485,7 @@ simcom_err_t sim_at_mqtt_publish(int client_index, int qos, int pub_timeout)
         int aux, err_code;
         if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
             return SIM_AT_ERR_RESPONSE;
-        ESP_LOGE(TAG, "Error connecting to MQTT server: %s", sim_mqtt_err_to_string(err_code));
+        ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
         return SIM_AT_ERR_RESPONSE;
     }
 
@@ -497,7 +497,7 @@ simcom_err_t sim_at_mqtt_publish(int client_index, int qos, int pub_timeout)
             int aux, err_code;
             if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
                 return SIM_AT_ERR_RESPONSE;
-            ESP_LOGE(TAG, "Error connecting to MQTT server: %s", sim_mqtt_err_to_string(err_code));
+            ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
             return SIM_AT_ERR_RESPONSE;
         }
     }

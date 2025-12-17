@@ -3,7 +3,7 @@
 
 static const char *TAG = "internet_services_at";
 
-simcom_err_t sim_at_get_ntp_config(void)
+simcom_err_t simcom_ntp_config_get(void)
 {
     // Send command
     simcom_err_t err = simcom_cmd_sync("AT+CNTP?\r\n", 9000);
@@ -36,7 +36,7 @@ simcom_err_t sim_at_get_ntp_config(void)
     return SIM_AT_OK;
 }
 
-simcom_err_t sim_at_set_ntp_config(const char* host, int timezone)
+simcom_err_t simcom_ntp_config_set(const char* host, int timezone)
 {
     // Es cada 15 min que considera
     int configTimezone = timezone * 4;
@@ -65,7 +65,7 @@ simcom_err_t sim_at_set_ntp_config(const char* host, int timezone)
     return SIM_AT_OK;
 }
 
-simcom_err_t sim_at_ntp_update_system_time(sim_at_ntp_err_code_t* ntp_err)
+simcom_err_t simcom_ntp_sys_time_update(sim_at_ntp_err_code_t* ntp_err)
 {
     // Send command
     simcom_err_t err = simcom_cmd_sync("AT+CNTP\r\n", 9000);

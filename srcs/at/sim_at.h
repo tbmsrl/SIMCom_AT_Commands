@@ -92,7 +92,7 @@ void simcom_parser_task_delete(void);
  * @return 
  *  - SIM_AT_OK on success
  *  - SIM_AT_ERR_NOT_INIT.
- *  - simcom_err_tIMEOUT
+ *  - SIMCOM_ERR_TIMEOUT
  *  - SIM_AT_ERR_UART
  *
  */
@@ -106,7 +106,7 @@ simcom_err_t simcom_cmd_sync(const char *cmd, uint32_t timeout_ms);
  * @return
  *  - SIM_AT_OK on success
  *  - SIM_AT_ERR_NOT_INIT.
- *  - simcom_err_tIMEOUT
+ *  - SIMCOM_ERR_TIMEOUT
  *  - SIM_AT_ERR_UART
  */
 simcom_err_t simcom_wait_resp(uint32_t timeout_ms);

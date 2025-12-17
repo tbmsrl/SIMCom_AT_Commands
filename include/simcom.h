@@ -420,6 +420,181 @@ simcom_err_t simcom_ping(const char* dest_addr);
   */
 simcom_err_t simcom_get_simcard_pin_info(sim_simcard_pin_code_t* code);
 
+
+
+/* =============================================================== */
+/* =============== [ Internet Servicies commands ] =============== */
+/* =============================================================== */
+
+/**
+ * [--- List of available commands ---]
+ * 
+ * [ ] AT+CHTPSERV          = Set HTP server information
+ * [ ] AT+CHTPUPDATE        = Updating date time using HTP protocol
+ * [x] AT+CNTP              = Update system time
+ * 
+ */
+
+/**
+ * @brief Logs the current NTP config
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_ntp_config_get(void);
+
+/**
+ * @brief Configure the NTP config
+ *  
+ * @param host NTP server address
+ * @param timezone GTM local time zone (-3 for Argentina)
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_ntp_config_set(const char* host, int timezone);
+
+/**
+ * @brief Updates the local system time with the configured NTP server configuration
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_ntp_sys_time_update(sim_at_ntp_err_code_t* ntp_err);
+
+
+/* ================================================= */
+/* =============== [ MQTT commands ] =============== */
+/* ================================================= */
+
+/**
+ * [--- List of available commands ---]
+ * 
+ * [x] AT+CMQTTSTART         = Start MQTT service
+ * [x] AT+CMQTTSTOP          = Stop MQTT service
+ * [x] AT+CMQTTACCQ          = Acquire a client
+ * [x] AT+CMQTTREL           = Release a client
+ * [ ] AT+CMQTTSSLCFG        = Set the SSL context (only for SSL/TLS MQTT)
+ * [ ] AT+CMQTTWILLTOPIC     = Input the topic of will message
+ * [ ] AT+CMQTTWILLMSG       = Input the will message
+ * [x] AT+CMQTTCONNECT       = Connect to MQTT server
+ * [x] AT+CMQTTDISC          = Disconnect from server
+ * [x] AT+CMQTTTOPIC         = Input the topic of publish message
+ * [x] AT+CMQTTPAYLOAD       = Input the publish message
+ * [x] AT+CMQTTPUB           = Publish a message to server
+ * [ ] AT+CMQTTSUBTOPIC      = Input the topic of subscribe message
+ * [ ] AT+CMQTTSUB           = Subscribe a message to server
+ * [ ] AT+CMQTTUNSUBTOPIC    = Input the topic of unsubscribe message
+ * [ ] AT+CMQTTUNSUB         = Unsubscribe a message to server
+ * [ ] AT+CMQTTCFG           = Configure the MQTT Context 
+ * 
+ */
+
+/**
+ * @brief Parse the mqtt errors codes to string
+ * 
+ * @param err mqtt error code
+ * 
+ * @return A string with the status code description
+ */
+ const char* simcom_mqtt_err_to_str(sim_mqtt_err_codes_t err);
+
+ /**
+  * @brief Start MQTT service by activating PDP context. This command must be executed before any other 
+  * MQTT related operations.
+  * 
+  * @returns SIM_AT_OK if succeded, Error Code if failed
+  */
+ sim_at_err_t simcom_mqtt_service_start(void);
+
+ /**
+  * @brief Stops MQTT service
+  * 
+  * @returns SIM_AT_OK if succeded, Error Code if failed
+  */
+sim_at_err_t simcom_mqtt_service_stop(void);
+
+
+/**
+ * @brief Acquire a MQTT client. It must be called before all commands about MQTT connect and after AT+CMQTTSTART.
+ * 
+ * @param client_index A numeric parameter that identifies a client. The range of permitted values is 0 to 1.
+ * @param client_id It specifies a unique identifier for the client. The string length is from 1 to 128 bytes.
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_mqtt_client_acquire(int client_index, const char* client_id);
+
+/**
+ * @brief Release a MQTT client. It must be called after AT+CMQTTDISC and before AT+CMQTTSTOP.
+ * 
+ * @param client_index A numeric parameter that identifies a client. The range of permitted values is 0 to 1.
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_mqtt_client_release(int client_index);
+
+
+/**
+ * @brief Connect to a MQTT server.
+ * 
+ * @param client_index A numeric parameter that identifies a client. The range of permitted values is 0 to 1.
+ * @param server_addr The string that described the server address and port. The range of the string length 
+ * is 9 to 256 bytes. The string should be like this "tcp://116.247.119.165:5141", must begin with "tcp://".
+ * @param keepalive_time The time interval between two messages received from a client. The client will send 
+ * a keep-alive packet when there is no message sent to server after song long time. The range is from 1s to 64800s.
+ * @param clean_session The clean session flag. The value range is from 0 to 1, and default value is 0.
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_mqtt_server_connect(int client_index, const char* server_addr, int keepalive_time, int clean_session);
+
+/**
+ * @brief Disconnects from the server.
+ * 
+ * @param client_index A numeric parameter that identifies a client. The range of permitted values is 0 to 1.
+ * @param timeout The timeout value for disconnection. The unit is second. The range is 1s to 180s. The default 
+ * value is 0s (not set the timeout value).
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_mqtt_server_disconnect(int client_index, int timeout);
+
+
+/**
+ * @brief Input the topic of a publish message.
+ * 
+ * @param client_index A numeric parameter that identifies a client. The range of permitted values is 0 to 1.
+ * @param topic The length of input topic data. The publish message topic should be UTF-encoded string. 
+ * The range is from 1 to 1024 bytes.
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_mqtt_topic_set(int client_index, const char* topic);
+
+/**
+ * @brief Input the message body of a publish message.
+ * 
+ * @param client_index A numeric parameter that identifies a client. The range of permitted values is 0 to 1.
+ * @param payload The length of input message data. The publish message should be UTF-encoded string. 
+ * The range is from 1 to 10240 bytes.
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_mqtt_payload_set(int client_index, const char* payload);
+
+/**
+ * @brief Publish a message to MQTT server.
+ * 
+ * @param client_index A numeric parameter that identifies a client. The range of permitted values is 0 to 1.
+ * @param qos The publish message’s qos. The range is from 0 to 2.
+ *  - 0 at most once
+ *  - 1 at least once
+ *  - 2 exactly once 
+ * @param pub_timeout The publishing timeout interval value. The range is from 1s to 180s.
+ * 
+ * @returns SIM_AT_OK if succeded, Error Code if failed
+ */
+sim_at_err_t simcom_mqtt_publish(int client_index, int qos, int pub_timeout);
+
+
 #ifdef __cplusplus
 }
 #endif
