@@ -3,6 +3,22 @@
 
 static const char *TAG = "status_control_at";
 
+simcom_err_t simcom_comm_test(void)
+{
+    // Send command
+    simcom_err_t err = simcom_cmd_sync("AT\r\n", 5000);
+    if (err != SIM_AT_OK)
+    {   
+        ESP_LOGE(TAG, "Error sending AT command: %s", simcom_err_to_str(err));
+        return err;
+    }
+
+    // TODO: En lugar de esto, se debería analizar la respuesta
+    simcom_ignore_resp();
+
+    return SIM_AT_OK;
+}
+
 simcom_err_t simcom_get_phone_func(sim_status_control_fun_t* fun)
 {   
     // Send command

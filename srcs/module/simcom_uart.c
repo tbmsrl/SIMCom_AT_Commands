@@ -72,6 +72,9 @@ simcom_err_t simcom_init(const simcom_config_t *cfg)
 
     g_inited = true;
 
+    // TODO: Ver si queda acá, o se pasa como argumento, o qué
+    simcom_enable_debug(true);
+    
     // TODO: Ver de mejorar esto? Capaz tendría que ir aparte
     // Además faltaría checkear que se haya podido sincronizar correctamente
     /* disable echo by default to simplify parsing (try but tolerate failure) */

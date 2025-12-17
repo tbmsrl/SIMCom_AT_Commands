@@ -70,6 +70,8 @@ simcom_err_t simcom_deinit(void);
  * 
  */
 
+simcom_err_t simcom_comm_test(void);
+
 /**
  * @brief Returns the current phone functionality
  * 
