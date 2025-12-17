@@ -1,4 +1,5 @@
 #include "simcom.h"
+#include "at/sim_at.h"
 
 static const char* TAG = "simcom_uart";
 
