@@ -13,9 +13,15 @@ simcom_err_t simcom_comm_test(void)
         return err;
     }
 
-    // TODO: En lugar de esto, se debería analizar la respuesta
-    simcom_ignore_resp();
-
+    // Read OK responss
+    char resp[SIM_AT_MAX_RESP_LEN];
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
+    if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
+    {
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
+        return SIM_AT_ERR_RESPONSE;
+    } 
+    
     return SIM_AT_OK;
 }
 
