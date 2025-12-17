@@ -440,7 +440,7 @@ simcom_err_t simcom_get_simcard_pin_info(sim_simcard_pin_code_t* code);
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_ntp_config_get(void);
+simcom_err_t simcom_ntp_config_get(void);
 
 /**
  * @brief Configure the NTP config
@@ -450,14 +450,14 @@ sim_at_err_t simcom_ntp_config_get(void);
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_ntp_config_set(const char* host, int timezone);
+simcom_err_t simcom_ntp_config_set(const char* host, int timezone);
 
 /**
  * @brief Updates the local system time with the configured NTP server configuration
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_ntp_sys_time_update(sim_at_ntp_err_code_t* ntp_err);
+simcom_err_t simcom_ntp_sys_time_update(sim_at_ntp_err_code_t* ntp_err);
 
 
 /* ================================================= */
@@ -502,14 +502,14 @@ sim_at_err_t simcom_ntp_sys_time_update(sim_at_ntp_err_code_t* ntp_err);
   * 
   * @returns SIM_AT_OK if succeded, Error Code if failed
   */
- sim_at_err_t simcom_mqtt_service_start(void);
+ simcom_err_t simcom_mqtt_service_start(void);
 
  /**
   * @brief Stops MQTT service
   * 
   * @returns SIM_AT_OK if succeded, Error Code if failed
   */
-sim_at_err_t simcom_mqtt_service_stop(void);
+simcom_err_t simcom_mqtt_service_stop(void);
 
 
 /**
@@ -520,7 +520,7 @@ sim_at_err_t simcom_mqtt_service_stop(void);
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_mqtt_client_acquire(int client_index, const char* client_id);
+simcom_err_t simcom_mqtt_client_acquire(int client_index, const char* client_id);
 
 /**
  * @brief Release a MQTT client. It must be called after AT+CMQTTDISC and before AT+CMQTTSTOP.
@@ -529,7 +529,7 @@ sim_at_err_t simcom_mqtt_client_acquire(int client_index, const char* client_id)
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_mqtt_client_release(int client_index);
+simcom_err_t simcom_mqtt_client_release(int client_index);
 
 
 /**
@@ -544,7 +544,7 @@ sim_at_err_t simcom_mqtt_client_release(int client_index);
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_mqtt_server_connect(int client_index, const char* server_addr, int keepalive_time, int clean_session);
+simcom_err_t simcom_mqtt_server_connect(int client_index, const char* server_addr, int keepalive_time, int clean_session);
 
 /**
  * @brief Disconnects from the server.
@@ -555,7 +555,7 @@ sim_at_err_t simcom_mqtt_server_connect(int client_index, const char* server_add
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_mqtt_server_disconnect(int client_index, int timeout);
+simcom_err_t simcom_mqtt_server_disconnect(int client_index, int timeout);
 
 
 /**
@@ -567,7 +567,7 @@ sim_at_err_t simcom_mqtt_server_disconnect(int client_index, int timeout);
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_mqtt_topic_set(int client_index, const char* topic);
+simcom_err_t simcom_mqtt_topic_set(int client_index, const char* topic);
 
 /**
  * @brief Input the message body of a publish message.
@@ -578,7 +578,7 @@ sim_at_err_t simcom_mqtt_topic_set(int client_index, const char* topic);
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_mqtt_payload_set(int client_index, const char* payload);
+simcom_err_t simcom_mqtt_payload_set(int client_index, const char* payload);
 
 /**
  * @brief Publish a message to MQTT server.
@@ -592,7 +592,7 @@ sim_at_err_t simcom_mqtt_payload_set(int client_index, const char* payload);
  * 
  * @returns SIM_AT_OK if succeded, Error Code if failed
  */
-sim_at_err_t simcom_mqtt_publish(int client_index, int qos, int pub_timeout);
+simcom_err_t simcom_mqtt_publish(int client_index, int qos, int pub_timeout);
 
 
 #ifdef __cplusplus
