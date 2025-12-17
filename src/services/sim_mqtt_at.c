@@ -1,4 +1,5 @@
-#include "sim_mqtt_at.h"
+#include "simcom.h"
+#include "sim_at.h"
 
 static const char *TAG = "mqtt_at";
 
@@ -46,13 +47,13 @@ const char* sim_mqtt_err_to_string(sim_mqtt_err_codes_t err)
     }
 }
 
-sim_at_err_t sim_at_start_mqtt_service(void)
+simcom_err_t sim_at_start_mqtt_service(void)
 {
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CMQTTSTART\r\n", 12000);
+    simcom_err_t err = simcom_cmd_sync("AT+CMQTTSTART\r\n", 12000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTSTART commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CMQTTSTART commands: %s", simcom_err_to_str(err));
         return err;
     }
 
@@ -60,19 +61,19 @@ sim_at_err_t sim_at_start_mqtt_service(void)
 
     // Read OK responss
     char resp[SIM_AT_MAX_RESP_LEN];
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     } 
     
     // Parse response
     char *data;
-    resp_err = sim_at_read_response_values(resp, "+CMQTTSTART", &data);
+    resp_err = simcom_read_resp_values(resp, "+CMQTTSTART", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CNTP response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CNTP response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }  
     
@@ -90,20 +91,20 @@ sim_at_err_t sim_at_start_mqtt_service(void)
     return SIM_AT_OK;
 }
 
-sim_at_err_t sim_at_stop_mqtt_service(void)
+simcom_err_t sim_at_stop_mqtt_service(void)
 {
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CMQTTSTOP\r\n", 12000);
+    simcom_err_t err = simcom_cmd_sync("AT+CMQTTSTOP\r\n", 12000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTSTOP commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CMQTTSTOP commands: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Parse response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CMQTTSTOP", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CMQTTSTOP", &data);
     
     if (resp_err == SIM_AT_RESPONSE_COMMAND_OK)
         return SIM_AT_OK;
@@ -126,7 +127,7 @@ sim_at_err_t sim_at_stop_mqtt_service(void)
     return SIM_AT_ERR_RESPONSE;
 }
 
-sim_at_err_t sim_at_acquire_mqtt_client(int client_index, const char* client_id)
+simcom_err_t sim_at_acquire_mqtt_client(int client_index, const char* client_id)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -138,17 +139,17 @@ sim_at_err_t sim_at_acquire_mqtt_client(int client_index, const char* client_id)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTACCQ=%d,\"%s\"\r\n", client_index, client_id);
     
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 9000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTACCQ commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CMQTTACCQ commands: %s", simcom_err_to_str(err));
         return err;
     }
         
     // Parse response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CMQTTACCQ", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CMQTTACCQ", &data);
 
     if (resp_err == SIM_AT_RESPONSE_COMMAND_OK)
         return SIM_AT_OK;
@@ -165,7 +166,7 @@ sim_at_err_t sim_at_acquire_mqtt_client(int client_index, const char* client_id)
     return SIM_AT_ERR_RESPONSE;
 }
 
-sim_at_err_t sim_at_release_mqtt_client(int client_index)
+simcom_err_t sim_at_release_mqtt_client(int client_index)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;  
@@ -175,17 +176,17 @@ sim_at_err_t sim_at_release_mqtt_client(int client_index)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTREL=%d\r\n", client_index);
     
     // Send command    
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 9000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTREL commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CMQTTREL commands: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Parse response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CMQTTREL", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CMQTTREL", &data);
 
     if (resp_err == SIM_AT_RESPONSE_COMMAND_OK)
         return SIM_AT_OK;
@@ -202,7 +203,7 @@ sim_at_err_t sim_at_release_mqtt_client(int client_index)
     return SIM_AT_OK;
 }
 
-sim_at_err_t sim_at_connect_mqtt_server(int client_index, const char* server_addr, int keepalive_time, int clean_session)
+simcom_err_t sim_at_connect_mqtt_server(int client_index, const char* server_addr, int keepalive_time, int clean_session)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -219,21 +220,21 @@ sim_at_err_t sim_at_connect_mqtt_server(int client_index, const char* server_add
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTCONNECT=%d,\"%s\",%d,%d\r\n", client_index, server_addr, keepalive_time, clean_session);
     
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 9000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTCONNECT commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CMQTTCONNECT commands: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Parse response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CMQTTCONNECT", &data);   
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CMQTTCONNECT", &data);   
     
     if (resp_err == SIM_AT_RESPONSE_COMMAND_OK)
     {
-        resp_err = sim_at_read_response_values(resp, "+CMQTTCONNECT", &data);
+        resp_err = simcom_read_resp_values(resp, "+CMQTTCONNECT", &data);
         if (resp_err == SIM_AT_RESPONSE_OK)
         {
             int aux, err_code;
@@ -260,7 +261,7 @@ sim_at_err_t sim_at_connect_mqtt_server(int client_index, const char* server_add
 
     if (resp_err == SIM_AT_RESPONSE_ERR_COMMAND_ERROR)
     {
-        resp_err = sim_at_read_response_values(resp, "+CMQTTCONNECT", &data);
+        resp_err = simcom_read_resp_values(resp, "+CMQTTCONNECT", &data);
         if (resp_err == SIM_AT_RESPONSE_OK)
         {
             int aux, err_code;
@@ -274,7 +275,7 @@ sim_at_err_t sim_at_connect_mqtt_server(int client_index, const char* server_add
     return SIM_AT_ERR_RESPONSE;
 }
 
-sim_at_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
+simcom_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -286,21 +287,21 @@ sim_at_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTDISC=%d,%d\r\n", client_index, timeout);
     
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 9000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTDISC commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CMQTTDISC commands: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Parse response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CMQTTDISC", &data);   
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CMQTTDISC", &data);   
     
     if (resp_err == SIM_AT_RESPONSE_COMMAND_OK)
     {
-        resp_err = sim_at_read_response_values(resp, "+CMQTTDISC", &data);
+        resp_err = simcom_read_resp_values(resp, "+CMQTTDISC", &data);
         if (resp_err == SIM_AT_RESPONSE_OK)
         {
             int aux, err_code;
@@ -327,7 +328,7 @@ sim_at_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
 
     if (resp_err == SIM_AT_RESPONSE_ERR_COMMAND_ERROR)
     {
-        resp_err = sim_at_read_response_values(resp, "+CMQTTDISC", &data);
+        resp_err = simcom_read_resp_values(resp, "+CMQTTDISC", &data);
         if (resp_err == SIM_AT_RESPONSE_OK)
         {
             int aux, err_code;
@@ -341,7 +342,7 @@ sim_at_err_t sim_at_disconnect_mqtt_server(int client_index, int timeout)
     return SIM_AT_ERR_RESPONSE;
 }
 
-sim_at_err_t sim_at_mqtt_topic(int client_index, const char* topic)
+simcom_err_t sim_at_mqtt_topic(int client_index, const char* topic)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -354,10 +355,10 @@ sim_at_err_t sim_at_mqtt_topic(int client_index, const char* topic)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTTOPIC=%d,%d\r\n", client_index, (int)strlen(topic));
     
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 2000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 2000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTTOPIC commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CMQTTTOPIC commands: %s", simcom_err_to_str(err));
         return err;
     }
     
@@ -365,31 +366,31 @@ sim_at_err_t sim_at_mqtt_topic(int client_index, const char* topic)
 
     // Wait for input response
     char resp[SIM_AT_MAX_RESP_LEN];    
-    get_sim_at_response(resp);
+    simcom_get_resp(resp);
     if (strstr(resp, ">") == NULL)
        return SIM_AT_ERR_RESPONSE; 
     
     // Send topic
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "%s\r\n", topic);
-    err = sim_at_cmd_sync(cmd, 9000);
+    err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error sending topic: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error sending topic: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Read OK response
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     } 
     
     return SIM_AT_OK;
 }
 
-sim_at_err_t sim_at_mqtt_payload(int client_index, const char* payload)
+simcom_err_t sim_at_mqtt_payload(int client_index, const char* payload)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -402,40 +403,40 @@ sim_at_err_t sim_at_mqtt_payload(int client_index, const char* payload)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTPAYLOAD=%d,%d\r\n", client_index, (int)strlen(payload));
     
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 2000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 2000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTPAYLOAD commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CMQTTPAYLOAD commands: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Wait for input respose
     char resp[SIM_AT_MAX_RESP_LEN];    
-    get_sim_at_response(resp);
+    simcom_get_resp(resp);
     if (strstr(resp, ">") == NULL)
        return SIM_AT_ERR_RESPONSE; // TODO: Poner otro, o analizar el error después
     
     // Send payload
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "%s\r\n", payload);
-    err = sim_at_cmd_sync(cmd, 2000);
+    err = simcom_cmd_sync(cmd, 2000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error sending payload: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error sending payload: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Read OK response
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     } 
     
     return SIM_AT_OK;  
 }
 
-sim_at_err_t sim_at_mqtt_publish(int client_index, int qos, int pub_timeout)
+simcom_err_t sim_at_mqtt_publish(int client_index, int qos, int pub_timeout)
 {
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -449,21 +450,21 @@ sim_at_err_t sim_at_mqtt_publish(int client_index, int qos, int pub_timeout)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTPUB=%d,%d,%d\r\n", client_index, qos, pub_timeout);
     
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, pub_timeout*1000);
+    simcom_err_t err = simcom_cmd_sync(cmd, pub_timeout*1000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTPUB commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CMQTTPUB commands: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Parse response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CMQTTPUB", &data);   
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CMQTTPUB", &data);   
     
     if (resp_err == SIM_AT_RESPONSE_COMMAND_OK)
     {
-        resp_err = sim_at_read_response_values(resp, "+CMQTTPUB", &data);
+        resp_err = simcom_read_resp_values(resp, "+CMQTTPUB", &data);
         if (resp_err == SIM_AT_RESPONSE_OK)
         {
             int aux, err_code;
@@ -490,7 +491,7 @@ sim_at_err_t sim_at_mqtt_publish(int client_index, int qos, int pub_timeout)
 
     if (resp_err == SIM_AT_RESPONSE_ERR_COMMAND_ERROR)
     {
-        resp_err = sim_at_read_response_values(resp, "+CMQTTPUB", &data);
+        resp_err = simcom_read_resp_values(resp, "+CMQTTPUB", &data);
         if (resp_err == SIM_AT_RESPONSE_OK)
         {
             int aux, err_code;

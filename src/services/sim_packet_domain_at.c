@@ -1,24 +1,25 @@
-#include "sim_packet_domain_at.h"
+#include "simcom.h"
+#include "sim_at.h"
 
 static const char *TAG = "packet_domain_at";
 
-sim_at_err_t sim_at_eps_network_registration(sim_eps_network_registration_stat_t* stat)
+simcom_err_t simcom_eps_net_reg(sim_eps_network_registration_stat_t* stat)
 {
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CEREG?\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CEREG?\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CEREG command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CEREG command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CEREG", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CEREG", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CEREG? response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CEREG? response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
     
@@ -31,17 +32,17 @@ sim_at_err_t sim_at_eps_network_registration(sim_eps_network_registration_stat_t
     *stat = pStat;
 
     // Read OK responss
-    resp_err = sim_at_read_ok(resp);
+    resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK; 
 }
 
-const char* sim_at_sim_eps_network_status_to_string(sim_eps_network_registration_stat_t stat)
+const char* simcom_sim_eps_net_stat_to_str(sim_eps_network_registration_stat_t stat)
 {
     switch(stat)
     {
@@ -58,23 +59,23 @@ const char* sim_at_sim_eps_network_status_to_string(sim_eps_network_registration
     }
 }
 
-sim_at_err_t sim_at_get_packet_domain_attach(int* state)
+simcom_err_t simcom_get_packet_domain_attach(int* state)
 {
     // Send command    
-    sim_at_err_t err = sim_at_cmd_sync("AT+CGATT?\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CGATT?\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CGATT? command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CGATT? command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CGATT", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CGATT", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CGATT? response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CGATT? response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
@@ -83,17 +84,17 @@ sim_at_err_t sim_at_get_packet_domain_attach(int* state)
         return SIM_AT_ERR_RESPONSE;
     
     // Read OK responss
-    resp_err = sim_at_read_ok(resp);
+    resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK; 
 }
 
-sim_at_err_t sim_at_set_packet_domain_attach(int state)
+simcom_err_t simcom_set_packet_domain_attach(int state)
 {
     if (state != 0 && state != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -103,19 +104,19 @@ sim_at_err_t sim_at_set_packet_domain_attach(int state)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CGATT=%d\r\n", state); 
 
     // Send command    
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 9000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CGATT=%d command: %s", state, sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CGATT=%d command: %s", state, simcom_err_to_str(err));
         return err;
     }
 
     // Read OK responss
     char resp[SIM_AT_MAX_RESP_LEN];
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
     
@@ -124,23 +125,23 @@ sim_at_err_t sim_at_set_packet_domain_attach(int state)
 
 // TODO: El problema si tiene muchos cid es como los devuelve, porque acá nomás devuelve el primero.
 // Habría que utilizar una array, o elegir que cid queremos verificar
-sim_at_err_t sim_at_get_pdp_context_activate(int* cid, int* state)
+simcom_err_t simcom_get_pdp_context_activate(int* cid, int* state)
 {
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CGACT?\r\n", 2000);
+    simcom_err_t err = simcom_cmd_sync("AT+CGACT?\r\n", 2000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CGACT command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CGACT command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CGACT", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CGACT", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CGACT? response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CGACT? response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
     
@@ -153,17 +154,17 @@ sim_at_err_t sim_at_get_pdp_context_activate(int* cid, int* state)
     // Capaz controlar hasta que se reciba un OK
     
     // Reads OK
-    resp_err = sim_at_read_ok(resp);
+    resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK; 
 }
 
-sim_at_err_t sim_at_set_pdp_context_activate(int cid, int state)
+simcom_err_t simcom_set_pdp_context_activate(int cid, int state)
 {
     if (state != 0 && state != 1)
         return SIM_AT_ERR_INVALID_ARG;
@@ -175,42 +176,42 @@ sim_at_err_t sim_at_set_pdp_context_activate(int cid, int state)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CGACT=%d,%d\r\n", state, cid);
     
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 9000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CGACT=%d,%d command: %s", state, cid, sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CGACT=%d,%d command: %s", state, cid, simcom_err_to_str(err));
         return err;
     }
     
     // Read OK responss
     char resp[SIM_AT_MAX_RESP_LEN];
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
         
     return SIM_AT_OK; 
 }
 
-sim_at_err_t sim_at_get_pdp_context(void)
+simcom_err_t simcom_get_pdp_context(void)
 {
     // Sends command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CGDCONT?\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CGDCONT?\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CGDCONT? command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CGDCONT? command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CGDCONT", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CGDCONT", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CGDCONT? response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CGDCONT? response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
@@ -222,17 +223,17 @@ sim_at_err_t sim_at_get_pdp_context(void)
     // Capaz controlar hasta que se reciba un OK
 
     // Reads OK
-    resp_err = sim_at_read_ok(resp);
+    resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK; 
 }
 
-const char* sim_pdp_type_to_string(sim_pdp_type_t pdp_type)
+const char* simcom_pdp_type_to_str(sim_pdp_type_t pdp_type)
 {
     switch(pdp_type)
     {
@@ -243,7 +244,7 @@ const char* sim_pdp_type_to_string(sim_pdp_type_t pdp_type)
     }
 }
 
-sim_at_err_t sim_at_set_pdp_context(int cid, sim_pdp_type_t pdp_type, const char* apn)
+simcom_err_t simcom_set_pdp_context(int cid, sim_pdp_type_t pdp_type, const char* apn)
 {
     if (cid < 1 || cid > 15)
         return SIM_AT_ERR_INVALID_ARG;
@@ -252,45 +253,45 @@ sim_at_err_t sim_at_set_pdp_context(int cid, sim_pdp_type_t pdp_type, const char
 
     // Command
     char cmd[SIM_AT_MAX_CMD_LEN];
-    snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CGDCONT=%d,\"%s\",\"%s\"\r\n", cid, sim_pdp_type_to_string(pdp_type), apn);
+    snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CGDCONT=%d,\"%s\",\"%s\"\r\n", cid, simcom_pdp_type_to_str(pdp_type), apn);
     
     // Sends command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 9000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CGDCONT command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CGDCONT command: %s", simcom_err_to_str(err));
         return err;
     }
 
     // Read OK responss
     char resp[SIM_AT_MAX_RESP_LEN];
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK; 
 }
 
-sim_at_err_t sim_at_show_pdp_address(int* cid, char* addr)
+simcom_err_t simcom_show_pdp_addr(int* cid, char* addr)
 {
     // Sends command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CGPADDR\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CGPADDR\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CGPADDR command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CGPADDR command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CGPADDR", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CGPADDR", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CGPADDR response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CGPADDR response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
     
@@ -303,17 +304,17 @@ sim_at_err_t sim_at_show_pdp_address(int* cid, char* addr)
     // Capaz controlar hasta que se reciba un OK
 
     // Read OK responss
-    resp_err = sim_at_read_ok(resp);
+    resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK; 
 }
 
-sim_at_err_t sim_at_ping(const char* dest_addr)
+simcom_err_t simcom_ping(const char* dest_addr)
 {
     // Command
     // Always works with IPv4, altough it could be configured
@@ -322,19 +323,19 @@ sim_at_err_t sim_at_ping(const char* dest_addr)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CPING=\"%s\",1\r\n", dest_addr);
     
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 9000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CPING command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CPING command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Read OK responss
     char resp[SIM_AT_MAX_RESP_LEN];
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 

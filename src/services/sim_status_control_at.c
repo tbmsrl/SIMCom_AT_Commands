@@ -1,24 +1,25 @@
-#include "sim_status_control_at.h"
+#include "simcom.h"
+#include "sim_at.h"
 
 static const char *TAG = "status_control_at";
 
-sim_at_err_t sim_at_get_phone_functionality(sim_status_control_fun_t* fun)
+simcom_err_t simcom_get_phone_func(sim_status_control_fun_t* fun)
 {   
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CFUN?\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CFUN?\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error sending AT+CFUN? command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error sending AT+CFUN? command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CFUN", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CFUN", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CFUN? response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CFUN? response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
     
@@ -26,17 +27,17 @@ sim_at_err_t sim_at_get_phone_functionality(sim_status_control_fun_t* fun)
     *fun = atoi(data);
     
     // Ignores OK
-    resp_err = sim_at_read_ok(resp);
+    resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK;
 }
 
-sim_at_err_t sim_at_set_phone_functionality(sim_status_control_fun_t fun)
+simcom_err_t simcom_set_phone_func(sim_status_control_fun_t fun)
 {
     // <rst> is always 1:
     // Reset the ME before setting it to <fun> power level. This value only takes effect when <fun> equals 1.
@@ -46,42 +47,42 @@ sim_at_err_t sim_at_set_phone_functionality(sim_status_control_fun_t fun)
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CFUN=%d,1\r\n", fun); 
     
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync(cmd, 9000);
+    simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CFUN=%d,1 commands: %s", fun, sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CFUN=%d,1 commands: %s", fun, simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
     
     return SIM_AT_OK;
 }
 
-sim_at_err_t sim_at_query_signal_quality(int* rssi, int* ber)
+simcom_err_t simcom_query_signal_quality(int* rssi, int* ber)
 {
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CSQ\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CSQ\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CSQ commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CSQ commands: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CSQ", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CSQ", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CSQ response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CSQ response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
     
@@ -90,17 +91,17 @@ sim_at_err_t sim_at_query_signal_quality(int* rssi, int* ber)
         return SIM_AT_ERR_RESPONSE;
 
     // Read OK responss
-    resp_err = sim_at_read_ok(resp);
+    resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK; 
 }
 
-int sim_rssi_to_dbm(int rssi)
+int simcom_rssi_to_dbm(int rssi)
 {
     if (rssi == 99) return -999; // Unknown or not detectable
     if (rssi <= 0)  return -113;
@@ -112,7 +113,7 @@ int sim_rssi_to_dbm(int rssi)
     return -999; // fallback
 }
 
-const char* sim_ber_to_string(int ber)
+const char* simcom_ber_to_str(int ber)
 {
     switch (ber)
     {
@@ -129,67 +130,67 @@ const char* sim_ber_to_string(int ber)
     }
 }
 
-sim_at_err_t sim_at_power_down_module(void)
+simcom_err_t simcom_power_down_module(void)
 {
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CPOF\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CPOF\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CPOF command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CPOF command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Read OK responss
     char resp[SIM_AT_MAX_RESP_LEN];
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK; 
 }
 
-sim_at_err_t sim_at_reset_module(void)
+simcom_err_t simcom_reset_module(void)
 {
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CRESET\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CRESET\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CRESET command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CRESET command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Read OK responss
     char resp[SIM_AT_MAX_RESP_LEN];
-    sim_at_responses_err_t resp_err = sim_at_read_ok(resp);
+    simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
     return SIM_AT_OK; 
 }
 
-sim_at_err_t sim_at_get_rtc_time(char* rtc_time)
+simcom_err_t simcom_get_rtc_time(char* rtc_time)
 {
     // Send command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CCLK?\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CCLK?\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CCLK? command: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CCLK? command: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CCLK", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CCLK", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CCLK? response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CCLK? response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
     
@@ -198,10 +199,10 @@ sim_at_err_t sim_at_get_rtc_time(char* rtc_time)
         return SIM_AT_ERR_RESPONSE;
 
     // Read OK response
-    resp_err = sim_at_read_ok(resp);
+    resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 

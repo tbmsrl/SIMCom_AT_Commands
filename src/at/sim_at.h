@@ -13,6 +13,9 @@ extern "C" {
 #include "driver/uart.h"
 #include "driver/gpio.h"
 
+#include "simcom_types.h"
+#include "simcom_config.h"
+
 /**
  * -------------------------------------
  * ----- [ Compile-time tunables ] -----
@@ -36,69 +39,15 @@ extern "C" {
 
 #define UART_MAX_WAITTIME 50 // [ms]
 
-/**
- * ------------------------------------
- * ----- [ Error / status codes ] -----
- * ------------------------------------ 
- */
+// TODO: Capaz conviene utilizar un extern para estos 2
+void simcom_set_config(simcom_config_t* config);
+void simcom_set_init_flag(bool init_f);
 
- typedef enum {
-    SIM_AT_OK = 0,
-    SIM_AT_ERR_INVALID_ARG = -1,
-    SIM_AT_ERR_NO_MEM = -2,    /* reserved—shouldn't be returned by API since no dynamic alloc */
-    SIM_AT_ERR_TIMEOUT = -3,
-    SIM_AT_ERR_UART = -4,
-    SIM_AT_ERR_BUSY = -5,
-    SIM_AT_ERR_INTERNAL = -6,
-    SIM_AT_ERR_NOT_INIT = -7,
-    SIM_AT_ERR_OVERFLOW = -8,  /* response too long for provided buffer */
-    SIM_AT_ERR_ABORTED = -9,
-    SIM_AT_ERR_RESPONSE = -10,
-} sim_at_err_t;
-// TODO: Completar con los errores que faltan capaz?
+simcom_err_t simcom_sem_create(void);
+void simcom_sem_delete(void);
 
-typedef enum {
-    SIM_AT_RESPONSE_OK = 0,
-    SIM_AT_RESPONSE_COMMAND_OK = -1,
-    SIM_AT_RESPONSE_ERR_INVALID_FORMAT = -2,
-    SIM_AT_RESPONSE_ERR_COMMAND_ERROR = -3,
-    SIM_AT_RESPONSE_ERR_COMMAND_INVALID = -4,
-} sim_at_responses_err_t;
-
-/**
- * -----------------------------
- * ----- [ Configuration ] -----
- * ----------------------------- 
- */
-
-/**
- * Pins struct: use -1 for unused pins.
- */
-typedef struct {
-    gpio_num_t dtr_pin;     // DTR pin number (used to wake/sleep modem)
-    gpio_num_t pwrkey_pin;  // PWRKEY pin (power on/off sequence)
-    gpio_num_t rst_pin;     // RESET pin
-} sim_at_pins_t;
-
-/**
- * Top-level config for init.
- *
- * Note: user-provided uart config is an esp-idf uart_config_t; pins are provided too.
- */
-typedef struct {
-    gpio_num_t tx_pin;                  // TX gpio
-    gpio_num_t rx_pin;                  // RX gpio
-    uart_port_t uart_port;              // UART port (e.g., UART_NUM_1)
-    uart_config_t uart_conf;            // baud_rate, data_bits, parity, stop_bits, flow_ctrl...
-    
-    sim_at_pins_t control_pins;         // DTR / PWRKEY / RESET wiring
-    
-    uint32_t default_cmd_timeout_ms;    // default blocking command timeout
-    
-    bool use_hw_flow_control;           // enable hardware flow control (RTS/CTS)
-    gpio_num_t rts_pin;                 // RTS gpio (-1 if unused)
-    gpio_num_t cts_pin;                 // CTS gpio (-1 if unused)
-} sim_at_config_t;
+BaseType_t simcom_parser_task_create(void);
+void simcom_parser_task_delete(void);
 
 /**
  * -----------------------------------------
@@ -129,40 +78,6 @@ typedef struct {
 // typedef void (*sim_at_cmd_cb_t)(const sim_at_response_t *resp);
 
 /**
- * -----------------------------------
- * ----- [ Core API: lifecycle ] -----
- * ----------------------------------- 
- */
-
-/**
- * @brief Initialize the SIM AT core library.
- * - This function configures UART, creates internal static resources and starts the parser task.
- * - No dynamic allocation is performed for public structures; internal static buffers are allocated inside the implementation.
- *
- * @param cfg Configuration struct pointer
- *
- * @return 
- *  - SIM_AT_OK on success.
- *  - SIM_AT_ERR_ABORTED API already initialized
- *  - SIM_AT_ERR_INVALID_ARG on empty config 
- *  - SIM_AT_ERR_NO_MEM no memory available
- *  - SIM_AT_ERR_UART error initializing UART
- *  - SIM_AT_ERR_INTERNAL error creating parser task
- */
-sim_at_err_t sim_at_init(const sim_at_config_t *cfg);
-
-/**
- * @brief Deinitialize library. 
- * Stops parser task and release internal resources.
- * Safe to call multiple times. After this, library functions return SIM_AT_ERR_NOT_INIT.
- * 
- * @return 
- *  - SIM_AT_OK on success.
- *  - SIM_AT_ERR_NOT_INIT if the API is not initialized
- */
-sim_at_err_t sim_at_deinit(void);
-
-/**
  * ------------------------------------------
  * ----- [ Core API: issuing commands ] -----
  * ------------------------------------------ 
@@ -177,11 +92,11 @@ sim_at_err_t sim_at_deinit(void);
  * @return 
  *  - SIM_AT_OK on success
  *  - SIM_AT_ERR_NOT_INIT.
- *  - SIM_AT_ERR_TIMEOUT
+ *  - simcom_err_tIMEOUT
  *  - SIM_AT_ERR_UART
  *
  */
-sim_at_err_t sim_at_cmd_sync(const char *cmd, uint32_t timeout_ms);
+simcom_err_t simcom_cmd_sync(const char *cmd, uint32_t timeout_ms);
 
 /**
  * @brief Waits for AT command response (blocking - do not call from ISR).
@@ -191,10 +106,10 @@ sim_at_err_t sim_at_cmd_sync(const char *cmd, uint32_t timeout_ms);
  * @return
  *  - SIM_AT_OK on success
  *  - SIM_AT_ERR_NOT_INIT.
- *  - SIM_AT_ERR_TIMEOUT
+ *  - simcom_err_tIMEOUT
  *  - SIM_AT_ERR_UART
  */
-sim_at_err_t sim_at_wait_response(uint32_t timeout_ms);
+simcom_err_t simcom_wait_resp(uint32_t timeout_ms);
 
 /**
  * Send an AT command asynchronously.
@@ -210,7 +125,7 @@ sim_at_err_t sim_at_wait_response(uint32_t timeout_ms);
  *
  * The callback executes in the library context; keep it short. The sim_at_response_t::raw pointer passed to cb is only valid during the callback.
  */
-// sim_at_err_t sim_at_cmd_async(const char *cmd, sim_at_cmd_cb_t cb, void *user_ctx, uint32_t timeout_ms);
+// simcom_err_t sim_at_cmd_async(const char *cmd, sim_at_cmd_cb_t cb, void *user_ctx, uint32_t timeout_ms);
 
 /**
  * ---------------------------------------------
@@ -225,12 +140,12 @@ sim_at_err_t sim_at_wait_response(uint32_t timeout_ms);
  * 
  * @return False is there is no new responses, True otherwise
  */
-bool get_sim_at_response(char* buf);
+bool simcom_get_resp(char* buf);
 
 /**
  * @brief Ignore next response from ring buffer
  */
-void ignore_sim_response(void);
+void simcom_ignore_resp(void);
 
 /**
  * @brief Verify the response and get the index of the values
@@ -246,7 +161,7 @@ void ignore_sim_response(void);
  *  - SIM_AT_ERR_COMMAND_INVALID invalid response
  *  - SIM_AT_ERR_INVALID_FORMAT invalid response format
  */
-sim_at_responses_err_t sim_at_read_response_values(char* resp, const char* key_word, char** index);
+simcom_responses_err_t simcom_read_resp_values(char* resp, const char* key_word, char** index);
 
 /**
  * @brief Verify is the response is OK
@@ -258,7 +173,7 @@ sim_at_responses_err_t sim_at_read_response_values(char* resp, const char* key_w
  *  - SIM_AT_ERR_COMMAND_ERROR an ERROR was received
  *  - SIM_AT_ERR_COMMAND_INVALID invalid response
  */
-sim_at_responses_err_t sim_at_read_ok(char* resp);
+simcom_responses_err_t simcom_resp_read_ok(char* resp);
 
 /**
  * -----------------------
@@ -269,7 +184,7 @@ sim_at_responses_err_t sim_at_read_ok(char* resp);
 /**
  * @brief Flush UART RX buffer inside library context.
  */
-sim_at_err_t sim_at_uart_flush_rx(void);
+simcom_err_t simcom_uart_flush_rx(void);
 
 // TODO: Completar
 /**
@@ -278,9 +193,9 @@ sim_at_err_t sim_at_uart_flush_rx(void);
  * Library will validate configured pins; if pin == -1 returns SIM_AT_ERR_INVALID_ARG.
  * These functions are provided to allow app-managed power sequences.
  */
-// sim_at_err_t sim_at_control_dtr(bool state);
-// sim_at_err_t sim_at_control_pwrkey(bool state);
-// sim_at_err_t sim_at_control_reset(bool state);
+// simcom_err_t sim_at_control_dtr(bool state);
+// simcom_err_t sim_at_control_pwrkey(bool state);
+// simcom_err_t sim_at_control_reset(bool state);
 
 /**
  * -----------------------------------
@@ -295,7 +210,7 @@ sim_at_err_t sim_at_uart_flush_rx(void);
  * 
  * @return SIM_AT_OK
  */
-sim_at_err_t sim_at_enable_debug(bool en);
+simcom_err_t simcom_enable_debug(bool en);
 
 /**
  * @brief Returns the corresponding description for a sim error
@@ -304,7 +219,7 @@ sim_at_err_t sim_at_enable_debug(bool en);
  * 
  * @return Error string
  */
-const char* sim_at_err_to_str(sim_at_err_t err);
+const char* simcom_err_to_str(simcom_err_t err);
 
 /**
  * @brief Returns the corresponding description for a sim response error
@@ -313,7 +228,7 @@ const char* sim_at_err_to_str(sim_at_err_t err);
  * 
  * @return Error string
  */
-const char* sim_at_response_err_to_str(sim_at_responses_err_t err);
+const char* simcom_resp_err_to_str(simcom_responses_err_t err);
 
 #ifdef __cplusplus
 }

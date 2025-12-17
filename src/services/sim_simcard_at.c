@@ -1,24 +1,25 @@
-#include "sim_simcard_at.h"
+#include "simcom.h"
+#include "sim_at.h"
 
 static const char *TAG = "simcard_at";
 
-sim_at_err_t sim_at_get_simcard_pin_info(sim_simcard_pin_code_t* code)
+simcom_err_t simcom_get_simcard_pin_info(sim_simcard_pin_code_t* code)
 {
     // Sends command
-    sim_at_err_t err = sim_at_cmd_sync("AT+CPIN?\r\n", 9000);
+    simcom_err_t err = simcom_cmd_sync("AT+CPIN?\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CPIN? commands: %s", sim_at_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CPIN? commands: %s", simcom_err_to_str(err));
         return err;
     }
     
     // Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
-    sim_at_responses_err_t resp_err = sim_at_read_response_values(resp, "+CPIN", &data);
+    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CPIN", &data);
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CPIN? response: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error with AT+CPIN? response: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
 
@@ -46,10 +47,10 @@ sim_at_err_t sim_at_get_simcard_pin_info(sim_simcard_pin_code_t* code)
         ESP_LOGE(TAG, "The SIM Card code was not recognized: %s", code_str);
 
     // Read OK responss
-    resp_err = sim_at_read_ok(resp);
+    resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
-        ESP_LOGE(TAG, "Ok response was not received: %s", sim_at_response_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     }
     
