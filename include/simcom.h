@@ -6,12 +6,12 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include "at/sim_at.h"
 #include "string.h"
 
 #include "esp_log.h"
 
 #include "simcom_types.h"
+#include "simcom_config.h"
 
 /**
  * -----------------------------------
