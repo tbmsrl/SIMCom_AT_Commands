@@ -6,6 +6,7 @@ set(srcs
     srcs/services/sim_network_at.c
     srcs/services/sim_simcard_at.c
     srcs/services/sim_packet_domain_at.c
+    srcs/services/sim_internet_services_at.c 
     srcs/services/sim_mqtt_at.c 
 )
 
