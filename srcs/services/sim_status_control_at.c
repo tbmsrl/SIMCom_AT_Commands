@@ -39,18 +39,18 @@ simcom_err_t simcom_get_phone_func(sim_status_control_fun_t* fun)
 
 simcom_err_t simcom_set_phone_func(sim_status_control_fun_t fun)
 {
-    // <rst> is always 1:
+    // TODO: Controlar si fun=1 y hacer el rst? Es el único momento dónde se puede
     // Reset the ME before setting it to <fun> power level. This value only takes effect when <fun> equals 1.
     
     // Command
     char cmd[SIM_AT_MAX_CMD_LEN];
-    snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CFUN=%d,1\r\n", fun); 
+    snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CFUN=%d\r\n", fun); 
     
     // Send command
     simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
-        ESP_LOGE(TAG, "Error with AT+CFUN=%d,1 commands: %s", fun, simcom_err_to_str(err));
+        ESP_LOGE(TAG, "Error with AT+CFUN=%d commands: %s", fun, simcom_err_to_str(err));
         return err;
     }
     
