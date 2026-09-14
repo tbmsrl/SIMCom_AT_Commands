@@ -3,6 +3,11 @@
 
 static const char *TAG = "internet_services_at";
 
+/* [NTP-FIX] Tope de espera del resultado diferido +CNTP: <err>.
+ * Antes era portMAX_DELAY, o sea que un modulo que nunca contestara dejaba la tarea
+ * colgada con la radio prendida hasta que saltara el watchdog. */
+#define NTP_RESULT_TIMEOUT_MS   20000
+
 simcom_err_t simcom_ntp_config_get(void)
 {
     // Send command
@@ -23,7 +28,7 @@ simcom_err_t simcom_ntp_config_get(void)
         return SIM_AT_ERR_RESPONSE;
     }
 
-    // Just logs the current NTP config
+    ESP_LOGI(TAG, "Configuracion NTP actual: %s", data); // [NTP-FIX] antes no logueaba nada
 
     // Read OK responss
     resp_err = simcom_resp_read_ok(resp);
@@ -67,6 +72,17 @@ simcom_err_t simcom_ntp_config_set(const char* host, int timezone)
 
 simcom_err_t simcom_ntp_sys_time_update(sim_at_ntp_err_code_t* ntp_err)
 {
+    /* [NTP-FIX] *ntp_err se invalida al entrar.
+     *
+     * Antes, TODOS los caminos de error volvian sin tocarlo, asi que el caller decidia
+     * con lo que hubiera quedado en su stack. Si esa basura valia justo
+     * NTP_OPERATION_SUCCEEDED, se daba el sync por bueno y se leia el RTC del modulo sin
+     * sincronizar: el bug de la fecha de 2069 entrando por la puerta de atras. */
+    if (ntp_err != NULL)
+        *ntp_err = (sim_at_ntp_err_code_t)-1;
+
+    char resp[SIM_AT_MAX_RESP_LEN];
+
     // Send command
     simcom_err_t err = simcom_cmd_sync("AT+CNTP\r\n", 9000);
     if (err != SIM_AT_OK)
@@ -76,7 +92,6 @@ simcom_err_t simcom_ntp_sys_time_update(sim_at_ntp_err_code_t* ntp_err)
     }
 
     // Read OK responss
-    char resp[SIM_AT_MAX_RESP_LEN];
     simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
@@ -84,12 +99,17 @@ simcom_err_t simcom_ntp_sys_time_update(sim_at_ntp_err_code_t* ntp_err)
         return SIM_AT_ERR_RESPONSE;
     } 
 
-    // Wait for err code
-    // TODO: Revisar si existe una forma mejor de hacerlo
-    // El problema es que si no va a mandar la respuesta en cualquier momento, y no sé si se puede seguir 
-    // interactuando mientras
-    // Sino ver de encontrar cuál es el timeout configurado para el NTP
-    err = simcom_wait_resp(portMAX_DELAY); 
+    /* [NTP-FIX] Espera acotada del resultado diferido.
+     *
+     * Antes: simcom_wait_resp(portMAX_DELAY). Dos problemas. Uno, sin tope: un modulo
+     * mudo dejaba la tarea colgada con la radio prendida. Dos, wait_resp bloqueaba en el
+     * semaforo, y con una cuenta colgada de un comando anterior volvia al instante sin
+     * que hubiera llegado nada; entonces el parseo de abajo leia la linea equivocada y
+     * reportaba "Error with AT+CNTP response: SIM_AT_RESPONSE_COMMAND_OK".
+     *
+     * Ahora wait_resp busca la linea "+CNTP:" por contenido en el ring buffer, asi que
+     * no se puede confundir con la senal de otro comando. */
+    err = simcom_wait_resp_for("+CNTP:", NTP_RESULT_TIMEOUT_MS);
     if (err != SIM_AT_OK)
     {
         ESP_LOGE(TAG, "Error waiting for +CNTP response: %s", simcom_err_to_str(err));
@@ -107,8 +127,13 @@ simcom_err_t simcom_ntp_sys_time_update(sim_at_ntp_err_code_t* ntp_err)
     
     int err_code;
     if (sscanf(data, "%d", &err_code) != 1)
+    {
+        ESP_LOGE(TAG, "No se pudo parsear el codigo de +CNTP: '%s'", data); // [NTP-FIX]
         return SIM_AT_ERR_RESPONSE;
-    *ntp_err = err_code;
+    }
+
+    if (ntp_err != NULL)
+        *ntp_err = (sim_at_ntp_err_code_t)err_code;
 
     return SIM_AT_OK;
 }
