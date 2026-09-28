@@ -186,10 +186,12 @@ simcom_err_t simcom_reset_module(void);
 /**
  * @brief Get current RTC time in the "yy/MM/dd,hh:mm:ss±zz" format
  * 
- * @param rtc_time String where the RTC time will be stored
- * 
+ * @param rtc_time String where the RTC time will be stored. Must hold at least
+ *                 SIMCOM_RTC_TIME_MIN_LEN bytes.
+ *
  * @return SIM_AT_OK if succeded, Error Code if failed
  */
+#define SIMCOM_RTC_TIME_MIN_LEN 64
 simcom_err_t simcom_get_rtc_time(char* rtc_time);
 
 

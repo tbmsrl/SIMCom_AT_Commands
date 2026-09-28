@@ -25,7 +25,7 @@ simcom_err_t simcom_get_simcard_pin_info(sim_simcard_pin_code_t* code)
 
     // Parse integer
     char code_str[16];
-    if (sscanf(data, "%s", code_str) != 1)
+    if (sscanf(data, "%15s", code_str) != 1)   // [SSCANF-W] antes sin ancho sobre code_str[16]
         return SIM_AT_ERR_RESPONSE;
     
     // Parse SIM Card code

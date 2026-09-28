@@ -194,8 +194,10 @@ simcom_err_t simcom_get_rtc_time(char* rtc_time)
         return SIM_AT_ERR_RESPONSE;
     }
     
-    // Parse response
-    if (sscanf(data, "%s", rtc_time) != 1)
+    /* [SSCANF-W] Antes "%s" sin ancho: 'data' puede traer hasta SIM_AT_MAX_RESP_LEN - 1
+     * bytes, y una linea +CCLK corrupta desbordaba el buffer del caller (128 B en el stack
+     * de main_task). La respuesta real mide 22 caracteres. */
+    if (sscanf(data, "%63s", rtc_time) != 1)
         return SIM_AT_ERR_RESPONSE;
 
     // Read OK response
