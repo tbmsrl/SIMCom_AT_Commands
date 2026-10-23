@@ -3,6 +3,26 @@
 
 static const char *TAG = "basic_at";
 
+simcom_err_t simcom_wait_modem_ready(void)
+{
+    int retries = 10;
+
+    while (retries--)
+    {
+        if (simcom_cmd_sync("AT\r\n", 1000) == SIM_AT_OK)
+        {
+            ESP_LOGI(TAG, "SIMCom ready!");
+            return SIM_AT_OK;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    ESP_LOGE(TAG, "SIMCom not initialized correctly");
+    return SIM_AT_ERR_RESPONSE;
+}
+
+
 simcom_err_t simcom_wait_atready(void)
 {
     simcom_err_t err;

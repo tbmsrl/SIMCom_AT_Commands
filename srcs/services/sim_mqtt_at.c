@@ -3,6 +3,42 @@
 
 static const char *TAG = "mqtt_at";
 
+/* [ASYNC-FIX] Tope de espera de la URC +CMQTTCONNECT, en ms. El loop viejo daba 5
+ * vueltas de 200 ms (1 s efectivo) aunque el timeout del comando fuera de 9 s. */
+#define MQTT_CONNECT_URC_TIMEOUT_MS   9000
+
+/**
+ * [URC-READ-FIX] Lee una URC diferida salteando el "OK" del comando.
+ *
+ * simcom_read_resp_values() devuelve COMMAND_OK apenas encuentra un "OK", aunque la
+ * linea buscada venga DESPUES en el mismo buffer. Y es exactamente lo que pasa aca: el
+ * modulo contesta "OK" y la URC junta, en el mismo chunk del UART:
+ *
+ *     <-- OK
+ *     <-- +CMQTTCONNECT: 0,0
+ *
+ * Asi que hay que seguir leyendo mientras devuelva COMMAND_OK. Se sale ante la linea
+ * buscada, ante un ERROR real, o cuando el buffer se vacia.
+ *
+ * NO se cambio la semantica de read_resp_values porque CMQTTACCQ y CMQTTREL dependen de
+ * que COMMAND_OK signifique exito (en esos comandos el modulo contesta solo "OK" y la
+ * linea "+CMQTTACCQ:" aparece unicamente ante error).
+ */
+static simcom_responses_err_t mqtt_read_urc(const char *key_word, char *resp, char **data)
+{
+    simcom_responses_err_t resp_err = SIM_AT_RESPONSE_ERR_COMMAND_INVALID;
+
+    for (int i = 0; i < 8; i++)
+    {
+        resp_err = simcom_read_resp_values(resp, key_word, data);
+
+        if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
+            return resp_err;    // encontro la linea, un ERROR, o se quedo sin buffer
+    }
+
+    return resp_err;
+}
+
 const char* simcom_mqtt_err_to_str(sim_mqtt_err_codes_t err)
 {
     switch (err)
@@ -49,7 +85,7 @@ const char* simcom_mqtt_err_to_str(sim_mqtt_err_codes_t err)
 
 simcom_err_t simcom_mqtt_service_start(void)
 {
-    // Send command
+    //Enviar comando
     simcom_err_t err = simcom_cmd_sync("AT+CMQTTSTART\r\n", 12000);
     if (err != SIM_AT_OK)
     {   
@@ -57,30 +93,36 @@ simcom_err_t simcom_mqtt_service_start(void)
         return err;
     }
 
-    // TODO: Si devuelve ERROR es que ya se encuentra inicializado
-
-    // Read OK responss
+    //Leer OK (o ERROR si ya inició)
     char resp[SIM_AT_MAX_RESP_LEN];
     simcom_responses_err_t resp_err = simcom_resp_read_ok(resp);
+
+    if (strstr(resp, "ERROR") != NULL)
+    {
+        ESP_LOGW(TAG, "MQTT ya se encuentra inicializado (ERROR response)");
+        return SIM_AT_ERR_RESPONSE; 
+    }
+    
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
         ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
     } 
-    
-    // Parse response
-    char *data;
+
+    // -- Parse response --
+    char *data = NULL;
     resp_err = simcom_read_resp_values(resp, "+CMQTTSTART", &data);
+    
     if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        ESP_LOGE(TAG, "Error with AT+CNTP response: %s", simcom_resp_err_to_str(resp_err));
+        ESP_LOGE(TAG, "Error con la respuesta +CMQTTSTART: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
-    }  
+    }   
     
+    //Extraer el código de error
     int err_code;
     if (sscanf(data, "%d", &err_code) != 1)
         return SIM_AT_ERR_RESPONSE;
-
 
     if (err_code != SIM_MQTT_OK)
     {
@@ -88,6 +130,7 @@ simcom_err_t simcom_mqtt_service_start(void)
         return SIM_AT_ERR_INTERNAL;
     }
 
+    //Si todo salió bien, devolver OK!
     return SIM_AT_OK;
 }
 
@@ -205,88 +248,99 @@ simcom_err_t simcom_mqtt_client_release(int client_index)
 
 simcom_err_t simcom_mqtt_server_connect(int client_index, const char* server_addr, int keepalive_time, int clean_session)
 {
+    //Sanity checks
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
+
     int server_addr_len = strlen(server_addr);
-    if (server_addr_len < 9 || server_addr_len > 256)  
+    if (server_addr_len < 9 || server_addr_len > 256)
         return SIM_AT_ERR_INVALID_ARG;
+
     if (keepalive_time < 1 || keepalive_time > 64800)
         return SIM_AT_ERR_INVALID_ARG;
+
     if (clean_session != 0 && clean_session != 1)
         return SIM_AT_ERR_INVALID_ARG;
-    
-    // Command
+
+    //Build command
     char cmd[SIM_AT_MAX_CMD_LEN];
-    snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTCONNECT=%d,\"%s\",%d,%d\r\n", client_index, server_addr, keepalive_time, clean_session);
-    
-    // Send command
+    snprintf(cmd, SIM_AT_MAX_CMD_LEN,
+             "AT+CMQTTCONNECT=%d,\"%s\",%d,%d\r\n",
+             client_index, server_addr, keepalive_time, clean_session);
+
+    //Send command
     simcom_err_t err = simcom_cmd_sync(cmd, 9000);
+    ESP_LOGD(TAG, "[MQTT_CONNECT] cmd_sync ret: %d (%s)", err, simcom_err_to_str(err));
+
     if (err != SIM_AT_OK)
-    {   
-        ESP_LOGE(TAG, "Error with AT+CMQTTCONNECT commands: %s", simcom_err_to_str(err));
+    {
+        ESP_LOGE(TAG, "AT+CMQTTCONNECT failed: %s", simcom_err_to_str(err));
         return err;
     }
-    
-    // Parse response
-    char resp[SIM_AT_MAX_RESP_LEN];
-    char *data;
-    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CMQTTCONNECT", &data);   
-    
-    if (resp_err == SIM_AT_RESPONSE_COMMAND_OK)
-    {
-        resp_err = simcom_read_resp_values(resp, "+CMQTTCONNECT", &data);
-        if (resp_err == SIM_AT_RESPONSE_OK)
-        {
-            int aux, err_code;
-            if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
-                return SIM_AT_ERR_RESPONSE;
-            
-            if (err_code != SIM_MQTT_OK)
-            {
-                ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
-                return SIM_AT_ERR_RESPONSE;
-            }
-            return SIM_AT_OK;   
-        }
-    }
 
-    if (resp_err == SIM_AT_RESPONSE_OK)
+    /* [ASYNC-FIX] Antes: loop de 5 x read_resp_values() con 200 ms de espera fija.
+     * Dos problemas. Uno, cada vuelta en vacio consumia lo que hubiera en el buffer y
+     * dejaba un log por iteracion. Dos, el tope real eran 5 vueltas, no un tiempo: si la
+     * URC tardaba mas de ~1 s se perdia aunque el timeout del comando fuera de 9 s.
+     *
+     * wait_resp_for() espera la linea puntual por contenido, con granularidad de 20 ms y
+     * un tope en tiempo de reloj. */
+    char resp[SIM_AT_MAX_RESP_LEN];
+    char *data = NULL;
+
+    err = simcom_wait_resp_for("+CMQTTCONNECT:", MQTT_CONNECT_URC_TIMEOUT_MS);
+    if (err != SIM_AT_OK)
     {
-        int aux, err_code;
-        if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
-            return SIM_AT_ERR_RESPONSE;
-        ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
+        ESP_LOGE(TAG, "No +CMQTTCONNECT URC received (%s)", simcom_err_to_str(err));
         return SIM_AT_ERR_RESPONSE;
     }
 
-    if (resp_err == SIM_AT_RESPONSE_ERR_COMMAND_ERROR)
+    simcom_responses_err_t resp_err = mqtt_read_urc("+CMQTTCONNECT", resp, &data);
+    if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        resp_err = simcom_read_resp_values(resp, "+CMQTTCONNECT", &data);
-        if (resp_err == SIM_AT_RESPONSE_OK)
-        {
-            int aux, err_code;
-            if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
-                return SIM_AT_ERR_RESPONSE;
-            ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
-            return SIM_AT_ERR_RESPONSE;
-        }
+        ESP_LOGE(TAG, "No se pudo leer +CMQTTCONNECT: %s", simcom_resp_err_to_str(resp_err));
+        return SIM_AT_ERR_RESPONSE;
     }
-    
+
+    //Parse response
+    ESP_LOGD(TAG, "[MQTT_CONNECT] data: %s", data);
+
+    int client_id = -1;
+    int err_code = -1;
+
+    if (sscanf(data, "%d,%d", &client_id, &err_code) != 2)
+        return SIM_AT_ERR_RESPONSE;
+
+    ESP_LOGD(TAG, "[MQTT_CONNECT] parsed: client=%d err=%d", client_id, err_code);
+
+    //Success cases
+    if (err_code == 0 || err_code == 19)
+    {
+        if (err_code == 19)
+            ESP_LOGD(TAG, "Reusing existing MQTT connection");
+
+        return SIM_AT_OK;
+    }
+
+    ESP_LOGE(TAG, "MQTT connect failed: %s",
+             simcom_mqtt_err_to_str(err_code));
+
     return SIM_AT_ERR_RESPONSE;
 }
 
 simcom_err_t simcom_mqtt_server_disconnect(int client_index, int timeout)
 {
+    //Initial checks
     if (client_index != 0 && client_index != 1)
         return SIM_AT_ERR_INVALID_ARG;
     if (timeout < 0 || timeout > 180)
         return SIM_AT_ERR_INVALID_ARG;
     
-    // Command
+    //Build command
     char cmd[SIM_AT_MAX_CMD_LEN];
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTDISC=%d,%d\r\n", client_index, timeout);
     
-    // Send command
+    //Send command
     simcom_err_t err = simcom_cmd_sync(cmd, 9000);
     if (err != SIM_AT_OK)
     {   
@@ -294,7 +348,7 @@ simcom_err_t simcom_mqtt_server_disconnect(int client_index, int timeout)
         return err;
     }
     
-    // Parse response
+    //Parse response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
     simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CMQTTDISC", &data);   
@@ -310,7 +364,7 @@ simcom_err_t simcom_mqtt_server_disconnect(int client_index, int timeout)
             
             if (err_code != SIM_MQTT_OK)
             {
-                ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
+                ESP_LOGE(TAG, "Error disconnecting MQTT server: %s", simcom_mqtt_err_to_str(err_code));
                 return SIM_AT_ERR_RESPONSE;
             }
             return SIM_AT_OK;   
@@ -322,7 +376,7 @@ simcom_err_t simcom_mqtt_server_disconnect(int client_index, int timeout)
         int aux, err_code;
         if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
             return SIM_AT_ERR_RESPONSE;
-        ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
+        ESP_LOGE(TAG, "Error disconnecting MQTT server: %s", simcom_mqtt_err_to_str(err_code));
         return SIM_AT_ERR_RESPONSE;
     }
 
@@ -334,7 +388,7 @@ simcom_err_t simcom_mqtt_server_disconnect(int client_index, int timeout)
             int aux, err_code;
             if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
                 return SIM_AT_ERR_RESPONSE;
-            ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
+            ESP_LOGE(TAG, "Error disconnecting MQTT server: %s", simcom_mqtt_err_to_str(err_code));
             return SIM_AT_ERR_RESPONSE;
         }
     }
@@ -444,63 +498,48 @@ simcom_err_t simcom_mqtt_publish(int client_index, int qos, int pub_timeout)
         return SIM_AT_ERR_INVALID_ARG;
     if (pub_timeout < 1 || pub_timeout > 180)
         return SIM_AT_ERR_INVALID_ARG;
-        
-    // Command
+
     char cmd[SIM_AT_MAX_CMD_LEN];
     snprintf(cmd, SIM_AT_MAX_CMD_LEN, "AT+CMQTTPUB=%d,%d,%d\r\n", client_index, qos, pub_timeout);
-    
-    // Send command
-    simcom_err_t err = simcom_cmd_sync(cmd, pub_timeout*1000);
+
+    simcom_err_t err = simcom_cmd_sync(cmd, pub_timeout * 1000);
     if (err != SIM_AT_OK)
-    {   
+    {
         ESP_LOGE(TAG, "Error with AT+CMQTTPUB commands: %s", simcom_err_to_str(err));
         return err;
     }
-    
-    // Parse response
-    char resp[SIM_AT_MAX_RESP_LEN];
-    char *data;
-    simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CMQTTPUB", &data);   
-    
-    if (resp_err == SIM_AT_RESPONSE_COMMAND_OK)
-    {
-        resp_err = simcom_read_resp_values(resp, "+CMQTTPUB", &data);
-        if (resp_err == SIM_AT_RESPONSE_OK)
-        {
-            int aux, err_code;
-            if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
-                return SIM_AT_ERR_RESPONSE;
-            
-            if (err_code != SIM_MQTT_OK)
-            {
-                ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
-                return SIM_AT_ERR_RESPONSE;
-            }
-            return SIM_AT_OK;   
-        }
-    }
 
-    if (resp_err == SIM_AT_RESPONSE_OK)
+    /* [ASYNC-FIX] Esperar la URC real +CMQTTPUB, no asumir con el OK inicial.
+     *
+     * Antes: loop de (pub_timeout*1000)/200 vueltas, o sea 100 con pub_timeout=20. Cada
+     * vuelta en vacio llamaba a read_resp_values y dejaba un log, con el modem prendido
+     * esperando. Ahora es una espera por contenido, de 20 ms de granularidad. */
+    char resp[SIM_AT_MAX_RESP_LEN];
+    char *data = NULL;
+
+    err = simcom_wait_resp_for("+CMQTTPUB:", (uint32_t)pub_timeout * 1000U);
+    if (err != SIM_AT_OK)
     {
-        int aux, err_code;
-        if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
-            return SIM_AT_ERR_RESPONSE;
-        ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
+        ESP_LOGE(TAG, "No +CMQTTPUB URC received (%s)", simcom_err_to_str(err));
         return SIM_AT_ERR_RESPONSE;
     }
 
-    if (resp_err == SIM_AT_RESPONSE_ERR_COMMAND_ERROR)
+    simcom_responses_err_t resp_err = mqtt_read_urc("+CMQTTPUB", resp, &data);
+    if (resp_err != SIM_AT_RESPONSE_OK)
     {
-        resp_err = simcom_read_resp_values(resp, "+CMQTTPUB", &data);
-        if (resp_err == SIM_AT_RESPONSE_OK)
-        {
-            int aux, err_code;
-            if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
-                return SIM_AT_ERR_RESPONSE;
-            ESP_LOGE(TAG, "Error connecting to MQTT server: %s", simcom_mqtt_err_to_str(err_code));
-            return SIM_AT_ERR_RESPONSE;
-        }
+        ESP_LOGE(TAG, "No se pudo leer +CMQTTPUB: %s", simcom_resp_err_to_str(resp_err));
+        return SIM_AT_ERR_RESPONSE;
     }
-    
-    return SIM_AT_ERR_RESPONSE;
+
+    int aux, err_code;
+    if (sscanf(data, "%d,%d", &aux, &err_code) != 2)
+        return SIM_AT_ERR_RESPONSE;
+
+    if (err_code != SIM_MQTT_OK)
+    {
+        ESP_LOGE(TAG, "Error publishing MQTT message: %s", simcom_mqtt_err_to_str(err_code));
+        return SIM_AT_ERR_RESPONSE;
+    }
+
+    return SIM_AT_OK;
 }

@@ -5,6 +5,24 @@
 extern "C" {
 #endif
 
+//TOMI DEBUG:
+/**
+ * ------------------------------------
+ * ----- [ Operador de Red ] -----
+ * ------------------------------------ 
+ */
+
+typedef struct {
+    int mode;
+    int format;
+    char operator_name[64];
+    int act;
+    
+    int mcc;
+    int mnc;
+} simcom_operator_info_t;
+
+
 /**
  * ------------------------------------
  * ----- [ Error / status codes ] -----
@@ -92,6 +110,22 @@ typedef enum {
     PDP_IPV6, 
     PDP_IPV4V6,
 } sim_pdp_type_t;
+
+
+/**
+ * ------------------------------------
+ * ----- [ Operator Select Mode ] -----
+ * ------------------------------------
+ */
+
+typedef enum {
+    COPS_MODE_AUTOMATIC   = 0,
+    COPS_MODE_MANUAL      = 1,
+    COPS_MODE_DEREGISTER  = 2,
+    COPS_MODE_SET_ONLY    = 3,  // formato solamente, sin registrar
+    COPS_MODE_MANUAL_AUTO = 4,  // manual, fallback automático si falla
+} sim_cops_mode_t;
+
 
 /**
  * ----------------------------------

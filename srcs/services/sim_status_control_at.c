@@ -5,7 +5,7 @@ static const char *TAG = "status_control_at";
 
 simcom_err_t simcom_get_phone_func(sim_status_control_fun_t* fun)
 {   
-    // Send command
+    //Send command
     simcom_err_t err = simcom_cmd_sync("AT+CFUN?\r\n", 9000);
     if (err != SIM_AT_OK)
     {   
@@ -13,7 +13,7 @@ simcom_err_t simcom_get_phone_func(sim_status_control_fun_t* fun)
         return err;
     }
     
-    // Reads response
+    //Reads response
     char resp[SIM_AT_MAX_RESP_LEN];
     char *data;
     simcom_responses_err_t resp_err = simcom_read_resp_values(resp, "+CFUN", &data);
@@ -23,10 +23,10 @@ simcom_err_t simcom_get_phone_func(sim_status_control_fun_t* fun)
         return SIM_AT_ERR_RESPONSE;
     }
     
-    // Get FUN status code
+    //Get FUN status code
     *fun = atoi(data);
     
-    // Ignores OK
+    //Ignores OK
     resp_err = simcom_resp_read_ok(resp);
     if (resp_err != SIM_AT_RESPONSE_COMMAND_OK)
     {
@@ -194,8 +194,10 @@ simcom_err_t simcom_get_rtc_time(char* rtc_time)
         return SIM_AT_ERR_RESPONSE;
     }
     
-    // Parse response
-    if (sscanf(data, "%s", rtc_time) != 1)
+    /* [SSCANF-W] Antes "%s" sin ancho: 'data' puede traer hasta SIM_AT_MAX_RESP_LEN - 1
+     * bytes, y una linea +CCLK corrupta desbordaba el buffer del caller (128 B en el stack
+     * de main_task). La respuesta real mide 22 caracteres. */
+    if (sscanf(data, "%63s", rtc_time) != 1)
         return SIM_AT_ERR_RESPONSE;
 
     // Read OK response

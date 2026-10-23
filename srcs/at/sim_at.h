@@ -79,8 +79,21 @@ simcom_err_t simcom_cmd_sync(const char *cmd, uint32_t timeout_ms);
 
 /**
  * @brief Waits for AT command response (blocking - do not call from ISR).
+ *
+ * [ASYNC-FIX] Cubre dos casos distintos que conviven en la libreria:
+ *
+ *   a) Un resultado diferido con prefijo propio (+CNTP:, +CMQTTPUB:, ...), que llega
+ *      despues del OK inicial. Se detecta buscandolo en el ring buffer.
+ *
+ *   b) Un "OK" suelto que no corresponde a ningun cmd_sync (por ejemplo el que llega
+ *      despues de escribir el dato crudo tras un prompt '>'). Se detecta por semaforo.
+ *
+ * Cuando se sabe QUE linea se espera conviene usar simcom_wait_resp_for(), que es
+ * inmune a que haya quedado una linea diferida vieja dando vueltas en el buffer.
  * 
  * @param timeout_ms how long to wait for final response (OK/ERROR). If zero, uses default configured timeout.
+ *                   Valores mayores a 60 s se acotan a 60 s (hay callers historicos
+ *                   que pasaban portMAX_DELAY, lo que dejaba la radio prendida sin tope).
  * 
  * @return
  *  - SIM_AT_OK on success
@@ -89,6 +102,28 @@ simcom_err_t simcom_cmd_sync(const char *cmd, uint32_t timeout_ms);
  *  - SIM_AT_ERR_UART
  */
 simcom_err_t simcom_wait_resp(uint32_t timeout_ms);
+
+/**
+ * [ASYNC-FIX] @brief Espera una linea de respuesta concreta, por prefijo.
+ *
+ * Version estricta de simcom_wait_resp(). Busca UNA linea puntual en el ring buffer
+ * (ej: "+CNTP:", "+CMQTTPUB:"), asi que no se puede confundir ni con la senal de otro
+ * comando ni con una linea diferida distinta que haya quedado dando vueltas.
+ *
+ * Usarla siempre que se sepa que linea se espera. simcom_wait_resp() queda para el caso
+ * del "OK" suelto posterior al prompt '>', donde no hay prefijo que buscar.
+ *
+ * NO consume la linea: leerla despues con simcom_read_resp_values().
+ *
+ * @param prefix     Prefijo esperado, con los dos puntos incluidos (ej: "+CMQTTPUB:").
+ * @param timeout_ms Tope de espera. 0 usa el default. Valores mayores a 60 s se acotan.
+ *
+ * @return
+ *  - SIM_AT_OK si la linea aparecio
+ *  - SIMCOM_ERR_TIMEOUT si no aparecio a tiempo
+ *  - SIM_AT_ERR_NOT_INIT / SIM_AT_ERR_INVALID_ARG
+ */
+simcom_err_t simcom_wait_resp_for(const char *prefix, uint32_t timeout_ms);
 
 /**
  * ---------------------------------------------
@@ -112,6 +147,10 @@ void simcom_ignore_resp(void);
 
 /**
  * @brief Verify the response and get the index of the values
+ *
+ * [URC-FIX] Saltea lineas que no corresponden (URCs intercalados) hasta encontrar la
+ * que tiene la palabra clave, un OK o un ERROR. Antes leia UNA sola linea y decidia con
+ * eso, asi que un URC colado entre el comando y su respuesta invalidaba el comando.
  * 
  * @param resp Response buffer
  * @param key_word Word to verify if present in the response
@@ -128,6 +167,8 @@ simcom_responses_err_t simcom_read_resp_values(char* resp, const char* key_word,
 
 /**
  * @brief Verify is the response is OK
+ *
+ * [URC-FIX] Idem: saltea lineas intercaladas hasta dar con el OK o el ERROR.
  * 
  * @param resp Response buffer
  * 

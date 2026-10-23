@@ -25,7 +25,10 @@ simcom_err_t simcom_sms_new_indications_set(uint8_t mode, uint8_t mt, uint8_t bm
     {
         ESP_LOGE(TAG, "Ok response was not received: %s", simcom_resp_err_to_str(resp_err));
         return SIM_AT_ERR_RESPONSE;
-    } 
+    } else 
+    {
+        ESP_LOGI(TAG, "SMS notifications successfuly deactivated!");
+    }
     
     return SIM_AT_OK;
 

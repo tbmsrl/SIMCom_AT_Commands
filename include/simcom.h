@@ -51,6 +51,15 @@ simcom_err_t simcom_deinit(void);
 
 simcom_err_t simcom_control_pwrkey(bool state);
 
+/* ================================================== */
+/* =============== [ Raw AT Commands ] ============== */
+/* ================================================== */
+simcom_err_t simcom_cmd_sync(const char *cmd, uint32_t timeout_ms);
+simcom_err_t simcom_wait_resp(uint32_t timeout_ms);
+bool         simcom_get_resp(char *buf);
+void         simcom_ignore_resp(void);
+simcom_responses_err_t simcom_read_resp_values(char *resp, const char *key_word, char **index);
+simcom_responses_err_t simcom_resp_read_ok(char *resp);
 
 /* ================================================== */
 /* =============== [ Basic Commands ] =============== */
@@ -177,10 +186,12 @@ simcom_err_t simcom_reset_module(void);
 /**
  * @brief Get current RTC time in the "yy/MM/dd,hh:mm:ss±zz" format
  * 
- * @param rtc_time String where the RTC time will be stored
- * 
+ * @param rtc_time String where the RTC time will be stored. Must hold at least
+ *                 SIMCOM_RTC_TIME_MIN_LEN bytes.
+ *
  * @return SIM_AT_OK if succeded, Error Code if failed
  */
+#define SIMCOM_RTC_TIME_MIN_LEN 64
 simcom_err_t simcom_get_rtc_time(char* rtc_time);
 
 
@@ -224,8 +235,12 @@ simcom_err_t simcom_net_reg(sim_network_registration_stat_t* stat);
  * @return A string with the status code description
  */
 const char* simcom_net_stat_to_str(sim_network_registration_stat_t stat);
-
 // TODO: COPS por el momento no se utiliza, pero podría ser necesaria
+
+
+simcom_err_t simcom_get_operator(simcom_operator_info_t *op);
+simcom_err_t simcom_wait_modem_ready(void);
+simcom_err_t simcom_set_operator_selection(sim_cops_mode_t mode);
 
 
 /* ================================================= */
@@ -379,6 +394,9 @@ simcom_err_t simcom_show_pdp_addr(int* cid, char* addr);
  * @return SIM_AT_OK if succeded, Error Code if failed 
  */
 simcom_err_t simcom_ping(const char* dest_addr);
+
+/*Gets IMSI SIM identificator (gives info about the Provider) */
+simcom_err_t simcom_get_imsi(char *imsi_out, size_t len);
 
 
 /* ============================================ */
